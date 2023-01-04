@@ -20,6 +20,7 @@ Inspiracja na grę - https://www.youtube.com/watch?v=AlCJc05nkwc
 ## Running Game
 
 One computer on local network must run server.py and the others need to execute run.py
+
 It is recommended to use virtualenv and install packages using pip install -r requirements.txt.
 
 ## Game Description
