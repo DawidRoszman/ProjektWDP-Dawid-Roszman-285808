@@ -13,9 +13,10 @@ Game Inspiration - https://www.youtube.com/watch?v=AlCJc05nkwc
 ## Keybinds ⌨️:
 
 - W - move up
-- D - move right
-- S - move down
 - A - move left
+- S - move down
+- D - move right
+
 - LMB 🖱️: - Shoot 💥: ( not impelemnted yet )
 - RMB 🖱️:, Space - Dash ( not impelented yet )
 
