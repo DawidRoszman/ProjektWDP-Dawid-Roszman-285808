@@ -23,5 +23,4 @@ One computer on local network must run server.py and the others need to execute 
 
 ## Game Description
 
-Score points by shooting second player. Player with higher score wins.
-After player death new round starts on randomly selected map. After getting 5 points player win.
+In this game, players can earn points by shooting the second player. The player with the highest score at the end of the round is declared the winner. If a player is killed, a new round begins on a randomly selected map. The game continues until one player reaches 5 points, at which point they are declared the winner.
