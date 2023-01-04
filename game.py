@@ -64,9 +64,11 @@ class Game:
         self.width = w
         self.height = h
         self.canvas = Canvas(self.width, self.height, "Duel")
-        self.player = Player(int(self.net.posPlayer[0]), int(self.net.posPlayer[1]), pygame.image.load(
+        self.player = Player(int(self.net.posPlayer[0]), int(
+            self.net.posPlayer[1]), pygame.image.load(
             "./assets/PNG/playerShip1_blue.png").convert_alpha())
-        self.player2 = Player(int(self.net.posEnemy[0]), int(self.net.posEnemy[1]), pygame.image.load(
+        self.player2 = Player(int(self.net.posEnemy[0]), int(
+            self.net.posEnemy[1]), pygame.image.load(
             "./assets/PNG/playerShip1_green.png").convert_alpha())
 
     def run(self):
@@ -130,7 +132,8 @@ class Game:
         try:
             d = data.split(":")[1].split(",")
             return int(d[0]), int(d[1]), int(d[2])
-        except:
+        except Exception as exception:
+            print(exception)
             return 0, 0, 0
 
 
@@ -149,9 +152,9 @@ class Canvas:
     def draw_text(self, text, size, x, y):
         pygame.font.init()
         font = pygame.font.SysFont("comicsans", size)
-        render = font.render(text, 1, (0, 0, 0))
+        render = font.render(text, True, (0, 0, 0))
 
-        self.screen.draw(render, (x, y))
+        self.screen.blit(render, (x, y))
 
     def get_canvas(self):
         return self.screen

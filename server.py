@@ -21,8 +21,10 @@ currentId = "0"
 pos = ["0:50,400,0", "1:900,400,0"]
 
 
-def threaded_client(conn: socket):
-    """create new thread for each client connection to server and send data to client and recieve data from client and send it to other client and close connection when client disconnects from server.
+def threaded_client(conn):
+    """create new thread for each client connection to server and send data to
+    client and recieve data from client and send it to other client and close
+    connection when client disconnects from server.
 
     Args:
         conn (socket): socket object of client connection
@@ -32,7 +34,7 @@ def threaded_client(conn: socket):
         conn.send(str.encode(currentId+";"+";".join(pos)))
     else:
         conn.send(str.encode(currentId+";"+";".join(pos[::-1])))
-    currentId = "1"
+    currentId = "1" if currentId == "0" else "0"
     reply = ''
     while True:
         try:
@@ -57,7 +59,8 @@ def threaded_client(conn: socket):
                 print("Sending: " + reply)
 
             conn.sendall(str.encode(reply))
-        except:
+        except Exception as ex:
+            print(ex)
             break
 
     print("Connection Closed")
