@@ -19,6 +19,7 @@ print("Waiting for a connection")
 
 currentId = "0"
 pos = ["0:50,400,0", "1:900,400,0"]
+bullets = ["", ""]
 
 
 def threaded_client(conn):
@@ -29,7 +30,7 @@ def threaded_client(conn):
     Args:
         conn (socket): socket object of client connection
     """
-    global currentId, pos
+    global currentId, pos, bullets
     if currentId == "0":
         conn.send(str.encode(currentId+";"+";".join(pos)))
     else:
@@ -38,7 +39,7 @@ def threaded_client(conn):
     reply = ''
     while True:
         try:
-            data = conn.recv(2048)
+            data = conn.recv(3048)
             reply = data.decode('utf-8')
             if not data:
                 conn.send(str.encode("Goodbye"))
@@ -47,15 +48,20 @@ def threaded_client(conn):
                 print("Recieved: " + reply)
                 arr = reply.split(":")
                 id = int(arr[0])
-                pos[id] = reply
-                nid = 0
+                if id != 3:
+                    pos[id] = reply
+                    nid = id
 
-                if id == 0:
-                    nid = 1
-                if id == 1:
-                    nid = 0
+                    if id == 0:
+                        nid = 1
+                    if id == 1:
+                        nid = 0
 
-                reply = pos[nid][:]
+                    reply = pos[nid][:]
+                else:
+                    print(bullets)
+                    bullets[int(arr[1])] = arr[2]
+                    reply = bullets[0]+":"+bullets[1]
                 print("Sending: " + reply)
 
             conn.sendall(str.encode(reply))

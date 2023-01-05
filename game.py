@@ -6,16 +6,19 @@ pygame.init()
 
 
 class Bullet():
-    def __init__(self, position: tuple[int, int], direction: float):
+    def __init__(self, position: tuple[int, int],
+                 direction: float, bounces: int = 3):
         self.pos = pygame.Vector2(position)
         self.direction = direction
         self.speed = 8
-        self.bounces = 3
+        self.velx = self.speed
+        self.vely = self.speed
+        self.bounces = bounces
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
 
     def move_bullet(self):
-        self.pos.y += math.cos(self.direction) * self.speed
-        self.pos.x += math.sin(self.direction) * self.speed
+        self.pos.y += math.cos(self.direction) * self.vely
+        self.pos.x += math.sin(self.direction) * self.velx
 
     def draw_bullet(self, window):
         self.rect.x = int(self.pos.x)
@@ -23,7 +26,6 @@ class Bullet():
         pygame.draw.rect(window, (255, 255, 255), self.rect)
 
     def bounce(self):
-        self.direction = -self.direction
         self.bounces -= 1
 
 
@@ -107,16 +109,18 @@ class Game:
                     run = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if pygame.mouse.get_pressed()[0]:
-                        print("created bullet")
-                        self.bullets.append(Bullet(self.player.rect.center, math.radians(self.player.current_angle + 180)))
-
+                        self.bullets.append(
+                            Bullet(
+                                self.player.rect.center,
+                                math.radians(self.player.current_angle + 180)))
 
             self.player.look_at_mouse()
 
             keys = pygame.key.get_pressed()
 
             if keys[pygame.K_d]:
-                if self.player.player_pos.x <= self.width - self.player.velocity:
+                if self.player.player_pos.x <= self.width \
+                        - self.player.velocity:
                     self.player.move(0)
 
             if keys[pygame.K_a]:
@@ -128,15 +132,30 @@ class Game:
                     self.player.move(2)
 
             if keys[pygame.K_s]:
-                if self.player.player_pos.y <= self.height - self.player.velocity:
+                if self.player.player_pos.y <= \
+                        self.height - self.player.velocity:
                     self.player.move(3)
 
-
-
             # Send Network Stuff
-            self.player2.player_pos.x, self.player2.player_pos.y, self.player2.current_angle = self.parse_data(
-                self.send_data())
+            self.player2.player_pos.x, self.player2.player_pos.y, \
+                self.player2.current_angle = \
+                self.parse_data(self.send_player_pos())
             self.player2.rotate(self.player2.current_angle)
+            for bullet_list in self.parse_bullets(self.send_bullets()):
+                for i, data in enumerate(bullet_list):
+                    if not data:
+                        continue
+                    data = data.split(",")
+                    if len(self.bullets) <= i:
+                        self.bullets.append(
+                                Bullet((int(data[0]),
+                                        int(data[1])), float(data[2]),
+                                       int(data[3])))
+                    else:
+                        self.bullets[i].pos = pygame.Vector2(int(data[0]),
+                                                             int(data[1]))
+                        self.bullets[i].direction = float(data[2])
+                        self.bullets[i].bounces = int(data[3])
 
             # Update Canvas
             self.canvas.draw_background()
@@ -146,22 +165,39 @@ class Game:
             for bullet in self.bullets:
                 bullet.move_bullet()
                 bullet.draw_bullet(self.canvas.get_canvas())
-                if bullet.rect.x < 0 or bullet.rect.x > self.width or bullet.rect.y < 0 or bullet.rect.y > self.height:
+                if bullet.pos.x < 0 or bullet.pos.x > \
+                        self.width:
                     bullet.bounce()
-                    if bullet.bounces <= 0:
-                        self.bullets.remove(bullet)
+                    bullet.velx *= -1
+                if bullet.pos.y < 0 \
+                        or bullet.pos.y > self.height:
+                    bullet.bounce()
+                    bullet.vely *= -1
+
+                if bullet.bounces <= 0:
+                    self.bullets.remove(bullet)
 
             self.canvas.update()
 
         pygame.quit()
 
-    def send_data(self):
+    def send_bullets(self):
+        data = "3:"+str(self.net.id)+":"
+        for bullet in self.bullets:
+            data += str(int(bullet.pos.x)) + ',' + str(int(bullet.pos.y)) \
+                    + ',' + str(
+                bullet.direction) + ',' + str(bullet.bounces) + ';'
+        reply = self.net.send(data)
+        return reply
+
+    def send_player_pos(self):
         """
         Send position to server
         :return: None
         """
-        data = str(self.net.id) + ":" + str(self.player.player_pos.x) + \
-            "," + str(self.player.player_pos.y) + "," + str(self.player.current_angle)
+        data = str(self.net.id) + ":" + str(int(self.player.player_pos.x)) + \
+            "," + str(int(self.player.player_pos.y)) + \
+            "," + str(self.player.current_angle)
         reply = self.net.send(data)
         return reply
 
@@ -173,6 +209,15 @@ class Game:
         except Exception as exception:
             print(exception)
             return 0, 0, 0
+
+    @staticmethod
+    def parse_bullets(data):
+        try:
+            d = data.split(":")
+            return [d[0].split(";"), d[1].split(";")]
+        except Exception as exception:
+            print(exception)
+            return []
 
 
 class Canvas:
