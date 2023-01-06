@@ -48,7 +48,7 @@ def threaded_client(conn):
                 print("Recieved: " + reply)
                 arr = reply.split(":")
                 id = int(arr[0])
-                if id != 3:
+                if id in [0, 1]:
                     pos[id] = reply
                     nid = id
 
@@ -58,10 +58,12 @@ def threaded_client(conn):
                         nid = 0
 
                     reply = pos[nid][:]
-                else:
+                elif id == 2:
                     print(bullets)
                     bullets[int(arr[1])] = arr[2]
                     reply = bullets[0]+":"+bullets[1]
+                elif id == 3:
+                    print("Player", arr[1], "lost")
                 print("Sending: " + reply)
 
             conn.sendall(str.encode(reply))
@@ -69,6 +71,7 @@ def threaded_client(conn):
             print(ex)
             break
 
+    currentId = "1" if currentId == "0" else "0"
     print("Connection Closed")
     conn.close()
 

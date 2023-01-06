@@ -16,16 +16,16 @@ class Bullet():
         self.vely = self.speed
         self.bounces = bounces
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
-        self.color = (0, 0, 255) if playerid != 0 else (0, 255, 0)
+        self.playerid = playerid
 
     def move_bullet(self):
         self.pos.y += math.cos(self.direction) * self.vely
         self.pos.x += math.sin(self.direction) * self.velx
 
-    def draw_bullet(self, window):
+    def draw_bullet(self, window, color):
         self.rect.x = int(self.pos.x)
         self.rect.y = int(self.pos.y)
-        pygame.draw.circle(window, self.color, self.rect.center, 4, 0)
+        pygame.draw.circle(window, color, self.rect.center, 4, 0)
 
     def bounce(self):
         self.bounces -= 1
@@ -182,7 +182,9 @@ class Game:
 
             for bullet in self.bullets:
                 bullet.move_bullet()
-                bullet.draw_bullet(self.canvas.get_canvas())
+                bullet.draw_bullet(self.canvas.get_canvas(), (0, 0, 255)
+                                   if bullet.playerid == self.net.id
+                                   else (0, 255, 0))
                 if bullet.pos.x < 0 or bullet.pos.x > \
                         self.width:
                     bullet.bounce()
@@ -200,14 +202,16 @@ class Game:
         pygame.quit()
 
     def check_if_enemy_bullet(self, bullet):
-        return bullet.color == (0, 255, 0)
+        return bullet.playerid != self.net.id
 
     def recharge_dash(self):
         self.can_dash = True
 
     def send_bullets(self):
-        data = "3:"+str(self.net.id)+":"
+        data = "2:"+str(self.net.id)+":"
         for bullet in self.bullets:
+            if bullet.playerid != self.net.id:
+                continue
             data += str(int(bullet.pos.x)) + ',' + str(int(bullet.pos.y)) \
                 + ',' + str(
                 bullet.direction) + ',' + str(bullet.bounces) + ';'
