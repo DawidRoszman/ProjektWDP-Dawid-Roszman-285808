@@ -7,7 +7,8 @@ pygame.init()
 
 class Bullet():
     def __init__(self, position: tuple[int, int],
-                 direction: float, bounces: int = 3):
+                 direction: float, bounces,
+                 playerid):
         self.pos = pygame.Vector2(position)
         self.direction = direction
         self.speed = 8
@@ -15,6 +16,7 @@ class Bullet():
         self.vely = self.speed
         self.bounces = bounces
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
+        self.color = (0, 0, 255) if playerid != 0 else (0, 255, 0)
 
     def move_bullet(self):
         self.pos.y += math.cos(self.direction) * self.vely
@@ -23,7 +25,7 @@ class Bullet():
     def draw_bullet(self, window):
         self.rect.x = int(self.pos.x)
         self.rect.y = int(self.pos.y)
-        pygame.draw.rect(window, (255, 255, 255), self.rect)
+        pygame.draw.circle(window, self.color, self.rect.center, 4, 0)
 
     def bounce(self):
         self.bounces -= 1
@@ -112,7 +114,8 @@ class Game:
                         self.bullets.append(
                             Bullet(
                                 self.player.rect.center,
-                                math.radians(self.player.current_angle + 180)))
+                                math.radians(self.player.current_angle + 180),
+                                3, self.net.id))
 
             self.player.look_at_mouse()
 
@@ -136,21 +139,30 @@ class Game:
                         self.height - self.player.velocity:
                     self.player.move(3)
 
+            # Collisions
+            def check_if_enemy_bullet(bullet):
+                return bullet.color == (0, 255, 0)
+            if self.player.rect.collidelist(
+                    [b.rect for b in filter(
+                        check_if_enemy_bullet, self.bullets)]) != -1:
+                print("hit")
+
             # Send Network Stuff
             self.player2.player_pos.x, self.player2.player_pos.y, \
                 self.player2.current_angle = \
                 self.parse_data(self.send_player_pos())
             self.player2.rotate(self.player2.current_angle)
-            for bullet_list in self.parse_bullets(self.send_bullets()):
+            for j, bullet_list in enumerate(self.parse_bullets(
+                    self.send_bullets())):
                 for i, data in enumerate(bullet_list):
                     if not data:
                         continue
                     data = data.split(",")
                     if len(self.bullets) <= i:
                         self.bullets.append(
-                                Bullet((int(data[0]),
-                                        int(data[1])), float(data[2]),
-                                       int(data[3])))
+                            Bullet((int(data[0]),
+                                    int(data[1])), float(data[2]),
+                                   int(data[3]), j))
                     else:
                         self.bullets[i].pos = pygame.Vector2(int(data[0]),
                                                              int(data[1]))
@@ -185,7 +197,7 @@ class Game:
         data = "3:"+str(self.net.id)+":"
         for bullet in self.bullets:
             data += str(int(bullet.pos.x)) + ',' + str(int(bullet.pos.y)) \
-                    + ',' + str(
+                + ',' + str(
                 bullet.direction) + ',' + str(bullet.bounces) + ';'
         reply = self.net.send(data)
         return reply
