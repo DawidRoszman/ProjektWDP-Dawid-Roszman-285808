@@ -18,7 +18,7 @@ Game Inspiration - https://www.youtube.com/watch?v=AlCJc05nkwc
 - D - move right
 
 - LMB 🖱️ - Shoot 💥
-- RMB 🖱️ / Space - Dash ( not impelented yet )
+- Space - Dash
 
 ## Running Game
 
