@@ -11,7 +11,7 @@ class Bullet():
                  playerid):
         self.pos = pygame.Vector2(position)
         self.direction = direction
-        self.speed = 8
+        self.speed = 10
         self.velx = self.speed
         self.vely = self.speed
         self.bounces = bounces
@@ -48,20 +48,13 @@ class Player():
     def draw(self, g):
         g.blit(self.player_sprite, (self.player_pos.x, self.player_pos.y))
 
-    def move(self, dirn):
-        """
-        :param dirn: 0 - 3 (right, left, up, down)
-        :return: None
-        """
-
-        if dirn == 0:
-            self.player_pos.x += self.velocity
-        elif dirn == 1:
-            self.player_pos.x -= self.velocity
-        elif dirn == 2:
-            self.player_pos.y -= self.velocity
-        else:
-            self.player_pos.y += self.velocity
+    def move(self, dirn: tuple[int, int], dash_speed: float = 0):
+        new_vector = pygame.Vector2(dirn).normalize()
+        new_x = self.player_pos.x + (new_vector.x * self.velocity) + \
+            (dash_speed * new_vector.x)
+        new_y = self.player_pos.y + (new_vector.y * self.velocity) + \
+            (dash_speed * new_vector.y)
+        self.player_pos.update(new_x, new_y)
         self.rect = self.player_sprite.get_rect(topleft=(self.player_pos))
 
     def look_at_mouse(self):
@@ -96,6 +89,8 @@ class Game:
             self.net.posEnemy[1]), pygame.image.load(
             "./assets/PNG/playerShip1_green.png").convert_alpha())
         self.bullets = []
+        self.dash_cd = [5.0, 0.0]
+        self.dash = 0
 
     def run(self):
         clock = pygame.time.Clock()
@@ -120,31 +115,42 @@ class Game:
             self.player.look_at_mouse()
 
             keys = pygame.key.get_pressed()
+            if self.dash != 0:
+                self.dash -= 1
 
+            move_dir = [0, 0]
             if keys[pygame.K_d]:
                 if self.player.player_pos.x <= self.width \
                         - self.player.velocity:
-                    self.player.move(0)
+                    move_dir[0] = 1
 
             if keys[pygame.K_a]:
                 if self.player.player_pos.x >= self.player.velocity:
-                    self.player.move(1)
+                    move_dir[0] = -1
 
             if keys[pygame.K_w]:
                 if self.player.player_pos.y >= self.player.velocity:
-                    self.player.move(2)
-
+                    move_dir[1] = -1
             if keys[pygame.K_s]:
                 if self.player.player_pos.y <= \
                         self.height - self.player.velocity:
-                    self.player.move(3)
+                    move_dir[1] = 1
+
+            if move_dir != [0, 0]:
+
+                current_time = pygame.time.get_ticks() / 1000
+                if keys[pygame.K_SPACE] and \
+                        current_time - self.dash_cd[1] > self.dash_cd[0]:
+                    print("dash")
+                    self.dash = 20
+                    self.dash_cd[1] = float(current_time)
+                self.player.move(tuple(move_dir), self.dash)
+                move_dir = [0, 0]
 
             # Collisions
-            def check_if_enemy_bullet(bullet):
-                return bullet.color == (0, 255, 0)
             if self.player.rect.collidelist(
                     [b.rect for b in filter(
-                        check_if_enemy_bullet, self.bullets)]) != -1:
+                        self.check_if_enemy_bullet, self.bullets)]) != -1:
                 print("hit")
 
             # Send Network Stuff
@@ -192,6 +198,12 @@ class Game:
             self.canvas.update()
 
         pygame.quit()
+
+    def check_if_enemy_bullet(self, bullet):
+        return bullet.color == (0, 255, 0)
+
+    def recharge_dash(self):
+        self.can_dash = True
 
     def send_bullets(self):
         data = "3:"+str(self.net.id)+":"
