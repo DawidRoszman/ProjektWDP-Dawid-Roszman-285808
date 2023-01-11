@@ -18,9 +18,9 @@ class Bullet():
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
         self.playerid = playerid
         self.ally_sprite = pygame.transform.scale(pygame.image.load(
-                    "assets/PNG/Lasers/laserBlue04.png"), (10, 10))
+                    "assets/PNG/Lasers/laserBlue08.png"), (10, 10))
         self.enemy_sprite = pygame.transform.scale(pygame.image.load(
-                    "assets/PNG/Lasers/laserGreen08.png"), (10, 10))
+                    "assets/PNG/Lasers/laserGreen14.png"), (10, 10))
 
     def move_bullet(self):
         self.pos.y += math.cos(self.direction) * self.vely
@@ -97,14 +97,33 @@ class Game:
             self.net.posEnemy[1]), pygame.image.load(
             "./assets/PNG/playerShip1_green.png").convert_alpha())
         self.bullets = []
-        self.dash_cd = [5.0, 0.0]
+        self.dash_cd = [5.0, 0.0, False]
         self.dash = 0
+        self.available_bullets = 3
+        self.reload_cd = [3.0, 0.0, False]
+        self.bullet_icon = pygame.transform.scale(pygame.image.load(
+            "assets/PNG/Lasers/laserBlue08.png"), (40, 40))
+        self.bullet_icon_gray = pygame.transform.scale(pygame.image.load(
+            "assets/PNG/Lasers/gray.jpg"), (40, 40))
+        self.dash_icon = pygame.transform.rotate(pygame.transform.scale(pygame.image.load(
+            "assets/PNG/UI/dash.png"), (40, 40)), 45)
+        self.dash_icon_gray = pygame.transform.scale(pygame.image.load(
+            "assets/PNG/UI/dash_gray.png"), (40, 40))
+
 
     def run(self):
         clock = pygame.time.Clock()
         run = True
         while run:
             clock.tick(60)
+            current_time = pygame.time.get_ticks() / 1000
+            if self.dash_cd[2]:
+                if current_time - self.dash_cd[1] >= self.dash_cd[0]:
+                    self.dash_cd[2] = False
+            if self.reload_cd[2]:
+                if current_time - self.reload_cd[1] >= self.reload_cd[0]:
+                    self.reload_cd[2] = False
+                    self.available_bullets = 3
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -114,11 +133,16 @@ class Game:
                     run = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if pygame.mouse.get_pressed()[0]:
-                        self.bullets.append(
-                            Bullet(
-                                self.player.rect.center,
-                                math.radians(self.player.current_angle + 180),
-                                3, self.net.id))
+                        if self.available_bullets > 0:
+                            self.available_bullets -= 1
+                            if self.available_bullets == 0:
+                                self.reload_cd[2] = True
+                                self.reload_cd[1] = current_time
+                            self.bullets.append(
+                                Bullet(
+                                    self.player.rect.center,
+                                    math.radians(self.player.current_angle + 180),
+                                    3, self.net.id))
 
             self.player.look_at_mouse()
 
@@ -146,12 +170,11 @@ class Game:
 
             if move_dir != [0, 0]:
 
-                current_time = pygame.time.get_ticks() / 1000
-                if keys[pygame.K_SPACE] and \
-                        current_time - self.dash_cd[1] > self.dash_cd[0]:
+                if keys[pygame.K_SPACE] and not self.dash_cd[2]:
                     print("dash")
                     self.dash = 20
                     self.dash_cd[1] = float(current_time)
+                    self.dash_cd[2] = True
                 self.player.move(tuple(move_dir), self.dash)
                 move_dir = [0, 0]
 
@@ -188,6 +211,17 @@ class Game:
             self.canvas.draw_background()
             self.player.draw(self.canvas.get_canvas())
             self.player2.draw(self.canvas.get_canvas())
+            self.canvas.get_canvas().blit(
+                    self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
+                    (self.width - 60, 60))
+            for i in range(3):
+                i = i + 1
+                if i > self.available_bullets:
+                    self.canvas.get_canvas().blit(
+                        self.bullet_icon_gray, (self.width - 40 * i, 10))
+                else:
+                    self.canvas.get_canvas().blit(
+                        self.bullet_icon, (self.width - 40 * i, 10))
 
             for bullet in self.bullets:
                 bullet.move_bullet()
