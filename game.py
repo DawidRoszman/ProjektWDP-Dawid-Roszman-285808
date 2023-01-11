@@ -40,16 +40,13 @@ class Bullet():
 
 
 class Player():
-    width = height = 50
 
     def __init__(self, startx, starty, player_image, color=(255, 0, 0)):
         self.player_pos = pygame.Vector2(startx, starty)
         self.velocity = 4
         self.color = color
-        self.og_player_image = pygame.transform.scale(
-            player_image, (self.width, self.height))
-        self.player_sprite = pygame.transform.scale(
-            player_image, (self.width, self.height))
+        self.og_player_image = player_image
+        self.player_sprite = player_image
         self.rect = self.player_sprite.get_rect(center=(self.player_pos))
         self.current_angle = 0
 
@@ -90,12 +87,14 @@ class Game:
         self.width = w
         self.height = h
         self.canvas = Canvas(self.width, self.height, "Duel")
+        self.player1_img = pygame.transform.scale(pygame.image.load(
+            "./assets/PNG/playerShip1_blue.png").convert_alpha(), (50, 50))
+        self.player2_img = pygame.transform.scale(pygame.image.load(
+            "./assets/PNG/playerShip1_green.png").convert_alpha(), (50, 50))
         self.player = Player(int(self.net.posPlayer[0]), int(
-            self.net.posPlayer[1]), pygame.image.load(
-            "./assets/PNG/playerShip1_blue.png").convert_alpha())
+            self.net.posPlayer[1]), self.player1_img)
         self.player2 = Player(int(self.net.posEnemy[0]), int(
-            self.net.posEnemy[1]), pygame.image.load(
-            "./assets/PNG/playerShip1_green.png").convert_alpha())
+            self.net.posEnemy[1]), self.player2_img)
         self.bullets = []
         self.dash_cd = [5.0, 0.0, False]
         self.dash = 0
@@ -211,6 +210,8 @@ class Game:
             self.canvas.draw_background()
             self.player.draw(self.canvas.get_canvas())
             self.player2.draw(self.canvas.get_canvas())
+            self.canvas.get_canvas().blit(self.player1_img, (self.width/2-50, 0))
+            self.canvas.get_canvas().blit(self.player2_img, (self.width/2+40, 0))
             self.canvas.get_canvas().blit(
                     self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
                     (self.width - 60, 60))
