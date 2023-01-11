@@ -210,8 +210,7 @@ class Game:
             self.canvas.draw_background()
             self.player.draw(self.canvas.get_canvas())
             self.player2.draw(self.canvas.get_canvas())
-            self.canvas.get_canvas().blit(self.player1_img, (self.width/2-50, 0))
-            self.canvas.get_canvas().blit(self.player2_img, (self.width/2+40, 0))
+            self.canvas.draw_text("0 : 0", 36,  int(self.width/2)-20, 20)
             self.canvas.get_canvas().blit(
                     self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
                     (self.width - 60, 60))
@@ -307,7 +306,7 @@ class Canvas:
     def draw_text(self, text, size, x, y):
         pygame.font.init()
         font = pygame.font.SysFont("comicsans", size)
-        render = font.render(text, True, (0, 0, 0))
+        render = font.render(text, True, (255, 255, 255))
 
         self.screen.blit(render, (x, y))
 
