@@ -17,15 +17,23 @@ class Bullet():
         self.bounces = bounces
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
         self.playerid = playerid
+        self.ally_sprite = pygame.transform.scale(pygame.image.load(
+                    "assets/PNG/Lasers/laserBlue04.png"), (10, 10))
+        self.enemy_sprite = pygame.transform.scale(pygame.image.load(
+                    "assets/PNG/Lasers/laserGreen08.png"), (10, 10))
 
     def move_bullet(self):
         self.pos.y += math.cos(self.direction) * self.vely
         self.pos.x += math.sin(self.direction) * self.velx
 
-    def draw_bullet(self, window, color):
+    def draw_bullet(self, window, is_enemy: bool):
         self.rect.x = int(self.pos.x)
         self.rect.y = int(self.pos.y)
-        pygame.draw.circle(window, color, self.rect.center, 4, 0)
+        if is_enemy:
+            sprite = self.enemy_sprite
+        else:
+            sprite = self.ally_sprite
+        window.blit(sprite, (self.rect.x, self.rect.y))
 
     def bounce(self):
         self.bounces -= 1
@@ -152,6 +160,7 @@ class Game:
                     [b.rect for b in filter(
                         self.check_if_enemy_bullet, self.bullets)]) != -1:
                 print("hit")
+                self.net.send("3:"+str(self.net.id))
 
             # Send Network Stuff
             self.player2.player_pos.x, self.player2.player_pos.y, \
@@ -182,9 +191,9 @@ class Game:
 
             for bullet in self.bullets:
                 bullet.move_bullet()
-                bullet.draw_bullet(self.canvas.get_canvas(), (0, 0, 255)
+                bullet.draw_bullet(self.canvas.get_canvas(), False
                                    if bullet.playerid == self.net.id
-                                   else (0, 255, 0))
+                                   else True)
                 if bullet.pos.x < 0 or bullet.pos.x > \
                         self.width:
                     bullet.bounce()

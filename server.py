@@ -18,7 +18,8 @@ s.listen(2)
 print("Waiting for a connection")
 
 currentId = "0"
-pos = ["0:50,400,0", "1:900,400,0"]
+beginning_pos = ["0:50,400,0", "1:900,400,0"]
+pos = beginning_pos[:]
 bullets = ["", ""]
 
 
@@ -64,6 +65,8 @@ def threaded_client(conn):
                     reply = bullets[0]+":"+bullets[1]
                 elif id == 3:
                     print("Player", arr[1], "lost")
+                    pos = beginning_pos[:]
+
                 print("Sending: " + reply)
 
             conn.sendall(str.encode(reply))
