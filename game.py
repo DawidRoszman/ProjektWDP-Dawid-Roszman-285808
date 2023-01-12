@@ -18,9 +18,9 @@ class Bullet():
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
         self.playerid = playerid
         self.ally_sprite = pygame.transform.scale(pygame.image.load(
-                    "assets/PNG/Lasers/laserBlue08.png"), (10, 10))
+            "assets/PNG/Lasers/laserBlue08.png"), (10, 10))
         self.enemy_sprite = pygame.transform.scale(pygame.image.load(
-                    "assets/PNG/Lasers/laserGreen14.png"), (10, 10))
+            "assets/PNG/Lasers/laserGreen14.png"), (10, 10))
 
     def move_bullet(self):
         self.pos.y += math.cos(self.direction) * self.vely
@@ -104,11 +104,11 @@ class Game:
             "assets/PNG/Lasers/laserBlue08.png"), (40, 40))
         self.bullet_icon_gray = pygame.transform.scale(pygame.image.load(
             "assets/PNG/Lasers/gray.jpg"), (40, 40))
-        self.dash_icon = pygame.transform.rotate(pygame.transform.scale(pygame.image.load(
-            "assets/PNG/UI/dash.png"), (40, 40)), 45)
+        self.dash_icon = pygame.transform.rotate(pygame.transform.scale(
+            pygame.image.load(
+                "assets/PNG/UI/dash.png"), (40, 40)), 45)
         self.dash_icon_gray = pygame.transform.scale(pygame.image.load(
             "assets/PNG/UI/dash_gray.png"), (40, 40))
-
 
     def run(self):
         clock = pygame.time.Clock()
@@ -140,7 +140,8 @@ class Game:
                             self.bullets.append(
                                 Bullet(
                                     self.player.rect.center,
-                                    math.radians(self.player.current_angle + 180),
+                                    math.radians(
+                                        self.player.current_angle + 180),
                                     3, self.net.id))
 
             self.player.look_at_mouse()
@@ -178,10 +179,11 @@ class Game:
                 move_dir = [0, 0]
 
             # Collisions
-            if self.player.rect.collidelist(
-                    [b.rect for b in filter(
-                        self.check_if_enemy_bullet, self.bullets)]) != -1:
-                print("hit")
+            filtered_bullets = [b.rect for b in filter(
+                self.check_if_enemy_bullet, self.bullets)]
+            colliding = self.player2.rect.collidelistall(filtered_bullets)
+            if len(colliding) > 0:
+                self.bullets.pop(colliding[0])
                 self.net.send("3:"+str(self.net.id))
 
             # Send Network Stuff
@@ -212,8 +214,8 @@ class Game:
             self.player2.draw(self.canvas.get_canvas())
             self.canvas.draw_text("0 : 0", 36,  int(self.width/2)-20, 20)
             self.canvas.get_canvas().blit(
-                    self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
-                    (self.width - 60, 60))
+                self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
+                (self.width - 60, 60))
             for i in range(3):
                 i = i + 1
                 if i > self.available_bullets:
@@ -245,7 +247,7 @@ class Game:
         pygame.quit()
 
     def check_if_enemy_bullet(self, bullet):
-        return bullet.playerid != self.net.id
+        return bullet.playerid == self.net.id
 
     def recharge_dash(self):
         self.can_dash = True
