@@ -24,6 +24,7 @@ currentId = "0"
 beginning_pos = ["0:50,400,0", "1:900,400,0"]
 pos = beginning_pos[:]
 bullets = ["", ""]
+score = [0, 0]
 
 
 def threaded_client(conn):
@@ -34,7 +35,7 @@ def threaded_client(conn):
     Args:
         conn (socket): socket object of client connection
     """
-    global currentId, pos, bullets
+    global currentId, pos, bullets, score
     if currentId == "0":
         conn.send(str.encode(currentId+";"+";".join(pos)))
     else:
@@ -69,6 +70,10 @@ def threaded_client(conn):
                 elif id == 3:
                     print("Player", arr[1], "lost")
                     pos = beginning_pos[:]
+                elif id == 4:
+                    score[int(arr[1])] = int(arr[2])
+                    print("Score:", score[0], score[1])
+                    reply = str(score[0])+":"+str(score[1])
 
                 print("Sending: " + reply)
 

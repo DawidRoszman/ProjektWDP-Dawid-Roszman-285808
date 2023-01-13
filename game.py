@@ -52,6 +52,8 @@ class Player():
 
     def draw(self, g):
         g.blit(self.player_sprite, (self.player_pos.x, self.player_pos.y))
+        draw_rect = pygame.Rect(self.rect.x, self.rect.y, 50, 50)
+        pygame.draw.rect(g, (255, 0, 0), draw_rect, 1)
 
     def move(self, dirn: tuple[int, int], dash_speed: float = 0):
         new_vector = pygame.Vector2(dirn).normalize()
@@ -109,6 +111,7 @@ class Game:
                 "assets/PNG/UI/dash.png"), (40, 40)), 45)
         self.dash_icon_gray = pygame.transform.scale(pygame.image.load(
             "assets/PNG/UI/dash_gray.png"), (40, 40))
+        self.score = [0, 0]
 
     def run(self):
         clock = pygame.time.Clock()
@@ -183,14 +186,17 @@ class Game:
                 self.check_if_enemy_bullet, self.bullets)]
             colliding = self.player2.rect.collidelistall(filtered_bullets)
             if len(colliding) > 0:
-                self.bullets.pop(colliding[0])
-                self.net.send("3:"+str(self.net.id))
+                self.score[0] += 1
+                # self.net.send("3:"+str(self.net.id))
 
             # Send Network Stuff
             self.player2.player_pos.x, self.player2.player_pos.y, \
                 self.player2.current_angle = \
                 self.parse_data(self.send_player_pos())
             self.player2.rotate(self.player2.current_angle)
+            self.player2.rect = self.player2.player_sprite.get_rect(topleft=(
+                self.player2.player_pos))
+            self.score = self.parse_score(self.send_score())
             for j, bullet_list in enumerate(self.parse_bullets(
                     self.send_bullets())):
                 for i, data in enumerate(bullet_list):
@@ -212,7 +218,8 @@ class Game:
             self.canvas.draw_background()
             self.player.draw(self.canvas.get_canvas())
             self.player2.draw(self.canvas.get_canvas())
-            self.canvas.draw_text("0 : 0", 36,  int(self.width/2)-20, 20)
+            self.canvas.draw_text(f"{self.score[0]} : {self.score[1]}",
+                                  36,  int(self.width/2), 20)
             self.canvas.get_canvas().blit(
                 self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
                 (self.width - 60, 60))
@@ -241,6 +248,13 @@ class Game:
 
                 if bullet.bounces <= 0:
                     self.bullets.remove(bullet)
+
+                if hit := bullet.rect.collidelistall([self.player.rect,
+                                                     self.player2.rect]):
+                    print("Bullet id", bullet.playerid)
+                    print("Player id", self.net.id)
+                    if int(bullet.playerid) != int(self.net.id):
+                        self.bullets.remove(bullet)
 
             self.canvas.update()
 
@@ -274,6 +288,11 @@ class Game:
         reply = self.net.send(data)
         return reply
 
+    def send_score(self):
+        data = "4:"+str(self.net.id)+":"+str(self.score[int(self.net.id)])
+        reply = self.net.send(data)
+        return reply
+
     @staticmethod
     def parse_data(data):
         try:
@@ -292,6 +311,15 @@ class Game:
             print(exception)
             return []
 
+    @staticmethod
+    def parse_score(data):
+        try:
+            d = data.split(":")
+            return [int(d[0]), int(d[1])]
+        except Exception as exception:
+            print(exception)
+            return [0, 0]
+
 
 class Canvas:
 
@@ -309,8 +337,9 @@ class Canvas:
         pygame.font.init()
         font = pygame.font.SysFont("comicsans", size)
         render = font.render(text, True, (255, 255, 255))
-
-        self.screen.blit(render, (x, y))
+        centerx = x - render.get_width() / 2
+        centery = y - render.get_height() / 2
+        self.screen.blit(render, (centerx, centery))
 
     def get_canvas(self):
         return self.screen
