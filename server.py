@@ -4,13 +4,13 @@ import sys
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = 'localhost'
-port = 5555
+server = '0.0.0.0'
+port = 6677
 try:
-    server_ip = sys.argv[1]
+    server = sys.argv[1]
+    server_ip = server
 except Exception:
     server_ip = socket.gethostbyname(server)
-
 try:
     s.bind((server, port))
 
@@ -25,6 +25,7 @@ beginning_pos = ["0:50,400,0", "1:900,400,0"]
 pos = beginning_pos[:]
 bullets = ["", ""]
 score = [0, 0]
+game_state = "waiting_for_players"
 
 
 def threaded_client(conn):
@@ -35,7 +36,7 @@ def threaded_client(conn):
     Args:
         conn (socket): socket object of client connection
     """
-    global currentId, pos, bullets, score
+    global currentId, pos, bullets, score, game_state
     if currentId == "0":
         conn.send(str.encode(currentId+";"+";".join(pos)))
     else:
@@ -68,8 +69,15 @@ def threaded_client(conn):
                     bullets[int(arr[1])] = arr[2]
                     reply = bullets[0]+":"+bullets[1]
                 elif id == 3:
-                    print("Player", arr[1], "lost")
-                    pos = beginning_pos[:]
+                    if arr[1] == 'hit':
+                        game_state = "game_over"
+                    if currentId == "1":
+                        game_state = "waiting_for_players"
+                    if currentId == "0" and \
+                            game_state == "waiting_for_players":
+                        game_state = "game"
+                    reply = game_state
+
                 elif id == 4:
                     score[int(arr[1])] = int(arr[2])
                     print("Score:", score[0], score[1])

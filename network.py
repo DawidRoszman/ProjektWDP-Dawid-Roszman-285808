@@ -5,8 +5,8 @@ class Network:
 
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.host = "localhost"
-        self.port = 5555
+        self.host = "192.168.0.195"
+        self.port = 6677
         self.addr = (self.host, self.port)
         self.msg = self.connect().split(";")
         self.id = self.msg[0]
@@ -18,7 +18,7 @@ class Network:
         """ Connect to server and return data from server
 
         Returns:
-            str: decoded data from server 
+            str: decoded data from server
         """
         self.client.connect(self.addr)
         return self.client.recv(2048).decode()

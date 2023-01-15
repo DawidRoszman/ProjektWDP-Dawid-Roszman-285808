@@ -1,6 +1,7 @@
 import pygame
 import math
 from network import Network
+from uuid import uuid4
 
 pygame.init()
 
@@ -9,6 +10,7 @@ class Bullet():
     def __init__(self, position: tuple[int, int],
                  direction: float, bounces,
                  playerid):
+        self.id = uuid4()
         self.pos = pygame.Vector2(position)
         self.direction = direction
         self.speed = 10
@@ -112,21 +114,14 @@ class Game:
         self.dash_icon_gray = pygame.transform.scale(pygame.image.load(
             "assets/PNG/UI/dash_gray.png"), (40, 40))
         self.score = [0, 0]
+        self.game_state = "waiting_for_players"
+        self.current_time = 0
 
     def run(self):
         clock = pygame.time.Clock()
         run = True
         while run:
             clock.tick(60)
-            current_time = pygame.time.get_ticks() / 1000
-            if self.dash_cd[2]:
-                if current_time - self.dash_cd[1] >= self.dash_cd[0]:
-                    self.dash_cd[2] = False
-            if self.reload_cd[2]:
-                if current_time - self.reload_cd[1] >= self.reload_cd[0]:
-                    self.reload_cd[2] = False
-                    self.available_bullets = 3
-
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
@@ -135,11 +130,12 @@ class Game:
                     run = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if pygame.mouse.get_pressed()[0]:
-                        if self.available_bullets > 0:
+                        if self.available_bullets > 0 and \
+                                self.game_state == "game":
                             self.available_bullets -= 1
                             if self.available_bullets == 0:
                                 self.reload_cd[2] = True
-                                self.reload_cd[1] = current_time
+                                self.reload_cd[1] = self.current_time
                             self.bullets.append(
                                 Bullet(
                                     self.player.rect.center,
@@ -147,124 +143,147 @@ class Game:
                                         self.player.current_angle + 180),
                                     3, self.net.id))
 
-            self.player.look_at_mouse()
-
-            keys = pygame.key.get_pressed()
-            if self.dash != 0:
-                self.dash -= 1
-
-            move_dir = [0, 0]
-            if keys[pygame.K_d]:
-                if self.player.player_pos.x <= self.width \
-                        - self.player.velocity:
-                    move_dir[0] = 1
-
-            if keys[pygame.K_a]:
-                if self.player.player_pos.x >= self.player.velocity:
-                    move_dir[0] = -1
-
-            if keys[pygame.K_w]:
-                if self.player.player_pos.y >= self.player.velocity:
-                    move_dir[1] = -1
-            if keys[pygame.K_s]:
-                if self.player.player_pos.y <= \
-                        self.height - self.player.velocity:
-                    move_dir[1] = 1
-
-            if move_dir != [0, 0]:
-
-                if keys[pygame.K_SPACE] and not self.dash_cd[2]:
-                    print("dash")
-                    self.dash = 20
-                    self.dash_cd[1] = float(current_time)
-                    self.dash_cd[2] = True
-                self.player.move(tuple(move_dir), self.dash)
-                move_dir = [0, 0]
-
-            # Collisions
-            filtered_bullets = [b.rect for b in filter(
-                self.check_if_enemy_bullet, self.bullets)]
-            colliding = self.player2.rect.collidelistall(filtered_bullets)
-            if len(colliding) > 0:
-                self.score[0] += 1
-                # self.net.send("3:"+str(self.net.id))
-
-            # Send Network Stuff
-            self.player2.player_pos.x, self.player2.player_pos.y, \
-                self.player2.current_angle = \
-                self.parse_data(self.send_player_pos())
-            self.player2.rotate(self.player2.current_angle)
-            self.player2.rect = self.player2.player_sprite.get_rect(topleft=(
-                self.player2.player_pos))
-            self.score = self.parse_score(self.send_score())
-            for j, bullet_list in enumerate(self.parse_bullets(
-                    self.send_bullets())):
-                for i, data in enumerate(bullet_list):
-                    if not data:
-                        continue
-                    data = data.split(",")
-                    if len(self.bullets) <= i:
-                        self.bullets.append(
-                            Bullet((int(data[0]),
-                                    int(data[1])), float(data[2]),
-                                   int(data[3]), j))
-                    else:
-                        self.bullets[i].pos = pygame.Vector2(int(data[0]),
-                                                             int(data[1]))
-                        self.bullets[i].direction = float(data[2])
-                        self.bullets[i].bounces = int(data[3])
-
-            # Update Canvas
+            self.game_state = self.send_game_state()
             self.canvas.draw_background()
-            self.player.draw(self.canvas.get_canvas())
-            self.player2.draw(self.canvas.get_canvas())
-            self.canvas.draw_text(f"{self.score[0]} : {self.score[1]}",
-                                  36,  int(self.width/2), 20)
-            self.canvas.get_canvas().blit(
-                self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
-                (self.width - 60, 60))
-            for i in range(3):
-                i = i + 1
-                if i > self.available_bullets:
-                    self.canvas.get_canvas().blit(
-                        self.bullet_icon_gray, (self.width - 40 * i, 10))
-                else:
-                    self.canvas.get_canvas().blit(
-                        self.bullet_icon, (self.width - 40 * i, 10))
-
-            for bullet in self.bullets:
-                bullet.move_bullet()
-                bullet.draw_bullet(self.canvas.get_canvas(), False
-                                   if bullet.playerid == self.net.id
-                                   else True)
-                if bullet.pos.x < 0 or bullet.pos.x > \
-                        self.width:
-                    bullet.bounce()
-                    bullet.velx *= -1
-                if bullet.pos.y < 0 \
-                        or bullet.pos.y > self.height:
-                    bullet.bounce()
-                    bullet.vely *= -1
-
-                if bullet.bounces <= 0:
-                    self.bullets.remove(bullet)
-
-                if hit := bullet.rect.collidelistall([self.player.rect,
-                                                     self.player2.rect]):
-                    print("Bullet id", bullet.playerid)
-                    print("Player id", self.net.id)
-                    if int(bullet.playerid) != int(self.net.id):
-                        self.bullets.remove(bullet)
+            print(self.game_state)
+            if self.game_state == "game":
+                self.game()
+            elif self.game_state == "waiting_for_players":
+                self.canvas.draw_text(
+                        "Waiting for players", 48, self.width/2, self.height/2)
+            elif self.game_state == "game_over":
+                self.canvas.draw_text(
+                        "Game Over", 48, self.width/2, self.height/2)
 
             self.canvas.update()
 
         pygame.quit()
+
+    def game(self):
+        self.current_time = pygame.time.get_ticks() / 1000
+        if self.dash_cd[2]:
+            if self.current_time - self.dash_cd[1] >= self.dash_cd[0]:
+                self.dash_cd[2] = False
+        if self.reload_cd[2]:
+            if self.current_time - self.reload_cd[1] >= self.reload_cd[0]:
+                self.reload_cd[2] = False
+                self.available_bullets = 3
+
+        self.player.look_at_mouse()
+
+        keys = pygame.key.get_pressed()
+        if self.dash != 0:
+            self.dash -= 1
+
+        move_dir = [0, 0]
+        if keys[pygame.K_d]:
+            if self.player.player_pos.x <= self.width \
+                    - self.player.velocity:
+                move_dir[0] = 1
+
+        if keys[pygame.K_a]:
+            if self.player.player_pos.x >= self.player.velocity:
+                move_dir[0] = -1
+
+        if keys[pygame.K_w]:
+            if self.player.player_pos.y >= self.player.velocity:
+                move_dir[1] = -1
+        if keys[pygame.K_s]:
+            if self.player.player_pos.y <= \
+                    self.height - self.player.velocity:
+                move_dir[1] = 1
+
+        if move_dir != [0, 0]:
+
+            if keys[pygame.K_SPACE] and not self.dash_cd[2]:
+                print("dash")
+                self.dash = 20
+                self.dash_cd[1] = float(self.current_time)
+                self.dash_cd[2] = True
+            self.player.move(tuple(move_dir), self.dash)
+            move_dir = [0, 0]
+
+        # Collisions
+        filtered_bullets = [b.rect for b in filter(
+            self.check_if_enemy_bullet, self.bullets)]
+        colliding = self.player2.rect.collidelistall(filtered_bullets)
+        if len(colliding) > 0:
+            self.score[int(self.net.id)] += 1
+            self.net.send("3:hit")
+            # self.net.send("3:"+str(self.net.id))
+
+        # Send Network Stuff
+        self.player2.player_pos.x, self.player2.player_pos.y, \
+            self.player2.current_angle = \
+            self.parse_data(self.send_player_pos())
+        self.player2.rotate(self.player2.current_angle)
+        self.player2.rect = self.player2.player_sprite.get_rect(topleft=(
+            self.player2.player_pos))
+        self.score = self.parse_score(self.send_score())
+        for j, bullet_list in enumerate(self.parse_bullets(
+                self.send_bullets())):
+            for i, data in enumerate(bullet_list):
+                if not data:
+                    continue
+                data = data.split(",")
+                if len(self.bullets) <= i:
+                    self.bullets.append(
+                        Bullet((int(data[0]),
+                                int(data[1])), float(data[2]),
+                               int(data[3]), j))
+                else:
+                    self.bullets[i].pos = pygame.Vector2(int(data[0]),
+                                                         int(data[1]))
+                    self.bullets[i].direction = float(data[2])
+                    self.bullets[i].bounces = int(data[3])
+
+        # Update Canvas
+        self.player.draw(self.canvas.get_canvas())
+        self.player2.draw(self.canvas.get_canvas())
+        self.canvas.draw_text(f"{self.score[0]} : {self.score[1]}",
+                              36,  int(self.width/2), 20)
+        self.canvas.get_canvas().blit(
+            self.dash_icon_gray if self.dash_cd[2] else self.dash_icon,
+            (self.width - 60, 60))
+        for i in range(3):
+            i = i + 1
+            if i > self.available_bullets:
+                self.canvas.get_canvas().blit(
+                    self.bullet_icon_gray, (self.width - 40 * i, 10))
+            else:
+                self.canvas.get_canvas().blit(
+                    self.bullet_icon, (self.width - 40 * i, 10))
+
+        for bullet in self.bullets:
+            bullet.move_bullet()
+            bullet.draw_bullet(self.canvas.get_canvas(), False
+                               if bullet.playerid == self.net.id
+                               else True)
+            if bullet.pos.x < 0 or bullet.pos.x > \
+                    self.width:
+                bullet.bounce()
+                bullet.velx *= -1
+            if bullet.pos.y < 0 \
+                    or bullet.pos.y > self.height:
+                bullet.bounce()
+                bullet.vely *= -1
+
+            if bullet.bounces <= 0:
+                self.bullets.remove(bullet)
+
+
+
 
     def check_if_enemy_bullet(self, bullet):
         return bullet.playerid == self.net.id
 
     def recharge_dash(self):
         self.can_dash = True
+
+    def send_game_state(self):
+        data = f"3:{self.game_state}:{self.net.id}"
+        reply = self.net.send(data)
+        return reply
 
     def send_bullets(self):
         data = "2:"+str(self.net.id)+":"
