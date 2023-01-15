@@ -4,13 +4,9 @@ import sys
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = '0.0.0.0'
+server = '192.168.0.101'
+server_ip = server
 port = 6677
-try:
-    server = sys.argv[1]
-    server_ip = server
-except Exception:
-    server_ip = socket.gethostbyname(server)
 try:
     s.bind((server, port))
 
