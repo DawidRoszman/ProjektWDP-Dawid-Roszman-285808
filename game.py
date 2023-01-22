@@ -6,6 +6,20 @@ from uuid import uuid4
 pygame.init()
 
 
+class Meteor():
+    def __init__(self, position: tuple[int, int], size: int):
+        self.pos = pygame.Vector2(position)
+        self.size = size
+        self.sprite = pygame.transform.scale(pygame.image.load(
+            "assets/PNG/Meteors/meteorGrey_big1.png"), (self.size, self.size))
+
+    def draw(self, window):
+        window.blit(self.sprite, self.pos)
+
+    def check_collision(self, other):
+        return self.sprite.collide_circle(self.sprite, other)
+
+
 class Bullet():
     def __init__(self, position: tuple[int, int],
                  direction: float, bounces,
@@ -14,8 +28,8 @@ class Bullet():
         self.pos = pygame.Vector2(position)
         self.direction = direction
         self.speed = 10
-        self.velx = self.speed
-        self.vely = self.speed
+        self.velocity = pygame.Vector2(math.sin(self.direction)*self.speed,
+                                       math.cos(self.direction)*self.speed)
         self.bounces = bounces
         self.rect = pygame.Rect(self.pos.x, self.pos.y, 5, 5)
         self.playerid = playerid
@@ -25,8 +39,7 @@ class Bullet():
             "assets/PNG/Lasers/laserGreen14.png"), (10, 10))
 
     def move_bullet(self):
-        self.pos.y += math.cos(self.direction) * self.vely
-        self.pos.x += math.sin(self.direction) * self.velx
+        self.pos += self.velocity
 
     def draw_bullet(self, window, is_enemy: bool):
         self.rect.x = int(self.pos.x)
@@ -90,6 +103,7 @@ class Game:
         self.net = Network()
         self.width = w
         self.height = h
+        self.FPS = 60
         self.canvas = Canvas(self.width, self.height, "Duel")
         self.player1_img = pygame.transform.scale(pygame.image.load(
             "./assets/PNG/playerShip1_blue.png").convert_alpha(), (50, 50))
@@ -116,12 +130,17 @@ class Game:
         self.score = [0, 0]
         self.game_state = "waiting_for_players"
         self.current_time = 0
+        self.ready = [0, 0]
+        self.meteors = []
 
     def run(self):
         clock = pygame.time.Clock()
         run = True
+        self.meteors = [Meteor(
+            (int(x[0]), int(x[1])), int(x[2])) for x in self.parse_meteors(self.net.send('5'))]
+
         while run:
-            clock.tick(60)
+            clock.tick(self.FPS)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
@@ -130,6 +149,9 @@ class Game:
                     run = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if pygame.mouse.get_pressed()[0]:
+                        if self.game_state != "game":
+                            self.ready[int(self.net.id)] = \
+                                0 if self.ready[int(self.net.id)] else 1
                         if self.available_bullets > 0 and \
                                 self.game_state == "game":
                             self.available_bullets -= 1
@@ -143,17 +165,27 @@ class Game:
                                         self.player.current_angle + 180),
                                     3, self.net.id))
 
-            self.game_state = self.send_game_state()
+            if self.game_state == "game_over":
+                self.game_state, self.ready[0], self.ready[1] = \
+                    self.parse_game_state(self.send_game_state())
+            else:
+                self.game_state = self.send_game_state()
             self.canvas.draw_background()
             print(self.game_state)
             if self.game_state == "game":
                 self.game()
             elif self.game_state == "waiting_for_players":
                 self.canvas.draw_text(
-                        "Waiting for players", 48, self.width/2, self.height/2)
+                    "Waiting for players", 48, self.width/2, self.height/2)
             elif self.game_state == "game_over":
                 self.canvas.draw_text(
-                        "Game Over", 48, self.width/2, self.height/2)
+                    "Game Over", 48, self.width/2, self.height/2)
+                self.canvas.draw_text(
+                    "Ready" if self.ready[0] else "Not Ready",
+                    36, self.width/2-80, self.height/2+50)
+                self.canvas.draw_text(
+                    "Ready" if self.ready[1] else "Not Ready",
+                    36, self.width/2+80, self.height/2+50)
 
             self.canvas.update()
 
@@ -209,7 +241,7 @@ class Game:
         colliding = self.player2.rect.collidelistall(filtered_bullets)
         if len(colliding) > 0:
             self.score[int(self.net.id)] += 1
-            self.net.send("3:hit")
+            self.game_state = "hit"
             # self.net.send("3:"+str(self.net.id))
 
         # Send Network Stuff
@@ -240,6 +272,8 @@ class Game:
         # Update Canvas
         self.player.draw(self.canvas.get_canvas())
         self.player2.draw(self.canvas.get_canvas())
+        for meteor in self.meteors:
+            meteor.draw(self.canvas.get_canvas())
         self.canvas.draw_text(f"{self.score[0]} : {self.score[1]}",
                               36,  int(self.width/2), 20)
         self.canvas.get_canvas().blit(
@@ -262,17 +296,14 @@ class Game:
             if bullet.pos.x < 0 or bullet.pos.x > \
                     self.width:
                 bullet.bounce()
-                bullet.velx *= -1
+                bullet.velocity *= -1
             if bullet.pos.y < 0 \
                     or bullet.pos.y > self.height:
                 bullet.bounce()
-                bullet.vely *= -1
+                bullet.velocity *= -1
 
             if bullet.bounces <= 0:
                 self.bullets.remove(bullet)
-
-
-
 
     def check_if_enemy_bullet(self, bullet):
         return bullet.playerid == self.net.id
@@ -280,7 +311,12 @@ class Game:
     def recharge_dash(self):
         self.can_dash = True
 
+    # Function for sending data to server
+
     def send_game_state(self):
+        if self.game_state != "game":
+            data = f"3:{self.game_state}:{self.net.id}: \
+                    {self.ready[int(self.net.id)]}"
         data = f"3:{self.game_state}:{self.net.id}"
         reply = self.net.send(data)
         return reply
@@ -312,6 +348,8 @@ class Game:
         reply = self.net.send(data)
         return reply
 
+    # Function to parse data which is coming from server
+
     @staticmethod
     def parse_data(data):
         try:
@@ -338,6 +376,26 @@ class Game:
         except Exception as exception:
             print(exception)
             return [0, 0]
+
+    @staticmethod
+    def parse_game_state(data):
+        try:
+            d = data.split(":")
+            if len(d) == 3:
+                return d[0], int(d[1]), int(d[2])
+            return d[0]
+        except Exception as exception:
+            print(exception)
+            return "game"
+
+    @staticmethod
+    def parse_meteors(data):
+        try:
+            d = data.split(":")
+            return [x.split(",") for x in d]
+        except Exception as exception:
+            print(exception)
+            return []
 
 
 class Canvas:

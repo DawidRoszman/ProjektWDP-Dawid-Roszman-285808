@@ -1,10 +1,15 @@
 import socket
 from _thread import start_new_thread
 import sys
+import time
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = '192.168.0.101'
+try:
+    server = sys.argv[1]
+except Exception as ex:
+    print(ex, "Using default server")
+    server = '10.10.4.64'
 server_ip = server
 port = 6677
 try:
@@ -22,6 +27,10 @@ pos = beginning_pos[:]
 bullets = ["", ""]
 score = [0, 0]
 game_state = "waiting_for_players"
+meteors = [
+    [100, 100, 20],
+    [200, 200, 20],
+]
 
 
 def threaded_client(conn):
@@ -41,7 +50,7 @@ def threaded_client(conn):
     reply = ''
     while True:
         try:
-            data = conn.recv(3048)
+            data = conn.recv(2048)
             reply = data.decode('utf-8')
             if not data:
                 conn.send(str.encode("Goodbye"))
@@ -67,6 +76,7 @@ def threaded_client(conn):
                 elif id == 3:
                     if arr[1] == 'hit':
                         game_state = "game_over"
+                        score[int(arr[2])] += 1
                     if currentId == "1":
                         game_state = "waiting_for_players"
                     if currentId == "0" and \
@@ -75,9 +85,11 @@ def threaded_client(conn):
                     reply = game_state
 
                 elif id == 4:
-                    score[int(arr[1])] = int(arr[2])
                     print("Score:", score[0], score[1])
                     reply = str(score[0])+":"+str(score[1])
+                elif id == 5:
+                    reply = ":".join([str(m[0])+","+str(
+                        m[1])+","+str(m[2]) for m in meteors])
 
                 print("Sending: " + reply)
 
