@@ -31,6 +31,7 @@ meteors = [
     [100, 100, 20],
     [200, 200, 20],
 ]
+ready = [0, 0]
 
 
 def threaded_client(conn):
@@ -41,7 +42,7 @@ def threaded_client(conn):
     Args:
         conn (socket): socket object of client connection
     """
-    global currentId, pos, bullets, score, game_state
+    global currentId, pos, bullets, score, game_state, ready
     if currentId == "0":
         conn.send(str.encode(currentId+";"+";".join(pos)))
     else:
@@ -50,7 +51,7 @@ def threaded_client(conn):
     reply = ''
     while True:
         try:
-            data = conn.recv(2048)
+            data = conn.recv(1024)
             reply = data.decode('utf-8')
             if not data:
                 conn.send(str.encode("Goodbye"))
@@ -75,21 +76,33 @@ def threaded_client(conn):
                     reply = bullets[0]+":"+bullets[1]
                 elif id == 3:
                     if arr[1] == 'hit':
-                        game_state = "game_over"
                         score[int(arr[2])] += 1
+                        game_state = "game_over"
+                        if score[int(arr[2])] == 5:
+                            game_state = "game_over_winner"
                     if currentId == "1":
                         game_state = "waiting_for_players"
                     if currentId == "0" and \
-                            game_state == "waiting_for_players":
+                                    game_state == "waiting_for_players":
                         game_state = "game"
                     reply = game_state
 
                 elif id == 4:
                     print("Score:", score[0], score[1])
                     reply = str(score[0])+":"+str(score[1])
-                elif id == 5:
-                    reply = ":".join([str(m[0])+","+str(
-                        m[1])+","+str(m[2]) for m in meteors])
+                # elif id == 5:
+                    # reply = ":".join([str(m[0])+","+str(
+                    #    m[1])+","+str(m[2]) for m in meteors])
+                elif id == 6:
+                    ready[int(arr[1])] = int(arr[2])
+                    if ready[0] == 1 and ready[1] == 1:
+                        print("game")
+                        game_state = "game"
+                        ready = [0, 0]
+                        bullets = ["", ""]
+                        print("Beginning pos:", beginning_pos)
+                        pos = beginning_pos[:]
+                    reply = str(ready[0])+":"+str(ready[1])
 
                 print("Sending: " + reply)
 

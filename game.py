@@ -57,7 +57,8 @@ class Bullet():
 class Player():
 
     def __init__(self, startx, starty, player_image, color=(255, 0, 0)):
-        self.player_pos = pygame.Vector2(startx, starty)
+        self.og_pos = [startx, starty]
+        self.player_pos = pygame.Vector2(*self.og_pos[:])
         self.velocity = 4
         self.color = color
         self.og_player_image = player_image
@@ -67,8 +68,6 @@ class Player():
 
     def draw(self, g):
         g.blit(self.player_sprite, (self.player_pos.x, self.player_pos.y))
-        draw_rect = pygame.Rect(self.rect.x, self.rect.y, 50, 50)
-        pygame.draw.rect(g, (255, 0, 0), draw_rect, 1)
 
     def move(self, dirn: tuple[int, int], dash_speed: float = 0):
         new_vector = pygame.Vector2(dirn).normalize()
@@ -95,6 +94,10 @@ class Player():
         self.player_sprite = pygame.transform.rotate(
             self.og_player_image, angle)
         self.rect = self.player_sprite.get_rect(center=self.rect.center)
+
+    def reset_pos(self):
+        self.player_pos = pygame.Vector2(*self.og_pos[:])
+        self.rect = self.player_sprite.get_rect(center=(self.player_pos))
 
 
 class Game:
@@ -136,8 +139,8 @@ class Game:
     def run(self):
         clock = pygame.time.Clock()
         run = True
-        self.meteors = [Meteor(
-            (int(x[0]), int(x[1])), int(x[2])) for x in self.parse_meteors(self.net.send('5'))]
+        # self.meteors = [Meteor(
+        # (int(x[0]), int(x[1])), int(x[2])) for x in self.parse_meteors(self.net.send('5'))]
 
         while run:
             clock.tick(self.FPS)
@@ -165,19 +168,28 @@ class Game:
                                         self.player.current_angle + 180),
                                     3, self.net.id))
 
-            if self.game_state == "game_over":
-                self.game_state, self.ready[0], self.ready[1] = \
-                    self.parse_game_state(self.send_game_state())
-            else:
-                self.game_state = self.send_game_state()
+            self.game_state = self.send_game_state()
             self.canvas.draw_background()
-            print(self.game_state)
             if self.game_state == "game":
+                self.ready = [0, 0]
                 self.game()
             elif self.game_state == "waiting_for_players":
                 self.canvas.draw_text(
                     "Waiting for players", 48, self.width/2, self.height/2)
+            elif self.game_state == "game_over_winner":
+                if self.score[int(self.net.id)] == 4:
+                    self.canvas.draw_text(
+                        "You won!", 48, self.width/2, self.height/2)
+                else:
+                    self.score[0 if int(self.net.id) else 1] += 1
+                    self.canvas.draw_text(
+                        "You lost!", 48, self.width/2, self.height/2)
+
             elif self.game_state == "game_over":
+                self.bullets = []
+                self.player.reset_pos()
+                self.player2.reset_pos()
+                self.available_bullets = 3
                 self.canvas.draw_text(
                     "Game Over", 48, self.width/2, self.height/2)
                 self.canvas.draw_text(
@@ -186,6 +198,7 @@ class Game:
                 self.canvas.draw_text(
                     "Ready" if self.ready[1] else "Not Ready",
                     36, self.width/2+80, self.height/2+50)
+                self.ready = self.parse_ready(self.send_ready())
 
             self.canvas.update()
 
@@ -228,7 +241,6 @@ class Game:
         if move_dir != [0, 0]:
 
             if keys[pygame.K_SPACE] and not self.dash_cd[2]:
-                print("dash")
                 self.dash = 20
                 self.dash_cd[1] = float(self.current_time)
                 self.dash_cd[2] = True
@@ -272,8 +284,8 @@ class Game:
         # Update Canvas
         self.player.draw(self.canvas.get_canvas())
         self.player2.draw(self.canvas.get_canvas())
-        for meteor in self.meteors:
-            meteor.draw(self.canvas.get_canvas())
+        # for meteor in self.meteors:
+        # meteor.draw(self.canvas.get_canvas())
         self.canvas.draw_text(f"{self.score[0]} : {self.score[1]}",
                               36,  int(self.width/2), 20)
         self.canvas.get_canvas().blit(
@@ -296,11 +308,11 @@ class Game:
             if bullet.pos.x < 0 or bullet.pos.x > \
                     self.width:
                 bullet.bounce()
-                bullet.velocity *= -1
+                bullet.velocity.x *= -1
             if bullet.pos.y < 0 \
                     or bullet.pos.y > self.height:
                 bullet.bounce()
-                bullet.velocity *= -1
+                bullet.velocity.y *= -1
 
             if bullet.bounces <= 0:
                 self.bullets.remove(bullet)
@@ -314,9 +326,6 @@ class Game:
     # Function for sending data to server
 
     def send_game_state(self):
-        if self.game_state != "game":
-            data = f"3:{self.game_state}:{self.net.id}: \
-                    {self.ready[int(self.net.id)]}"
         data = f"3:{self.game_state}:{self.net.id}"
         reply = self.net.send(data)
         return reply
@@ -348,6 +357,10 @@ class Game:
         reply = self.net.send(data)
         return reply
 
+    def send_ready(self):
+        data = "6:"+str(self.net.id)+":"+str(self.ready[int(self.net.id)])
+        reply = self.net.send(data)
+        return reply
     # Function to parse data which is coming from server
 
     @staticmethod
@@ -387,6 +400,15 @@ class Game:
         except Exception as exception:
             print(exception)
             return "game"
+
+    @staticmethod
+    def parse_ready(data):
+        try:
+            d = data.split(":")
+            return [int(d[0]), int(d[1])]
+        except Exception as exception:
+            print(exception)
+            return [0, 0]
 
     @staticmethod
     def parse_meteors(data):
