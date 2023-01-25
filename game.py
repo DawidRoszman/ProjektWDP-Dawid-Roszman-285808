@@ -16,7 +16,6 @@ class Meteor():
 
     def draw(self, window):
         window.blit(self.sprite, self.pos)
-        pygame.draw.rect(window, (255, 0, 0), self.rect, 1)
 
 
 class Bullet():
@@ -202,7 +201,7 @@ class Game:
                                         self.net.send('5'))]
 
                 self.canvas.draw_text(
-                    "Game Over", 48, self.width/2, self.height/2)
+                    "Round Over", 48, self.width/2, self.height/2)
                 self.canvas.draw_text(
                     "Ready" if self.ready[0] else "Not Ready",
                     36, self.width/2-150, self.height/2+50)
