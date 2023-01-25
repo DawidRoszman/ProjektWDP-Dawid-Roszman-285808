@@ -28,6 +28,8 @@ It is recommended to use virtualenv and install packages using pip install -r re
 
 To ensure optimal gameplay, both players and the server should be connected to the same network. If the game is not being played locally on one computer, when starting the server, enter your IPv4 address. Then, when running run.py, enter the same address as the server.
 
+When starting server.py you will be prompted to enter skins for players. You can find skin names in the section [below](#game-description)
+
 # Game Description 🎮
 
 In this game, players can earn points by shooting the second player. The player with the highest score at the end of the round is declared the winner. If a player is killed, a new round begins on a randomly selected map. The game continues until one player reaches 5 points, at which point they are declared the winner 🥇.
