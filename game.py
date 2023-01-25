@@ -12,12 +12,11 @@ class Meteor():
         self.size = size
         self.sprite = pygame.transform.scale(pygame.image.load(
             "assets/PNG/Meteors/meteorGrey_big1.png"), (self.size, self.size))
+        self.rect = self.sprite.get_rect(topleft=self.pos)
 
     def draw(self, window):
         window.blit(self.sprite, self.pos)
-
-    def check_collision(self, other):
-        return self.sprite.collide_circle(self.sprite, other)
+        pygame.draw.rect(window, (255, 0, 0), self.rect, 1)
 
 
 class Bullet():
@@ -27,7 +26,7 @@ class Bullet():
         self.id = uuid4()
         self.pos = pygame.Vector2(position)
         self.direction = direction
-        self.speed = 10
+        self.speed = 15
         self.velocity = pygame.Vector2(math.sin(self.direction)*self.speed,
                                        math.cos(self.direction)*self.speed)
         self.bounces = bounces
@@ -69,12 +68,15 @@ class Player():
     def draw(self, g):
         g.blit(self.player_sprite, (self.player_pos.x, self.player_pos.y))
 
-    def move(self, dirn: tuple[int, int], dash_speed: float = 0):
+    def move(self, dirn: tuple[int, int], meteors, dash_speed: float = 0):
         new_vector = pygame.Vector2(dirn).normalize()
         new_x = self.player_pos.x + (new_vector.x * self.velocity) + \
             (dash_speed * new_vector.x)
         new_y = self.player_pos.y + (new_vector.y * self.velocity) + \
             (dash_speed * new_vector.y)
+        for meteor in meteors:
+            if meteor.rect.colliderect(pygame.Rect(new_x, new_y, 50, 50)):
+                return
         self.player_pos.update(new_x, new_y)
         self.rect = self.player_sprite.get_rect(topleft=(self.player_pos))
 
@@ -139,8 +141,9 @@ class Game:
     def run(self):
         clock = pygame.time.Clock()
         run = True
-        # self.meteors = [Meteor(
-        # (int(x[0]), int(x[1])), int(x[2])) for x in self.parse_meteors(self.net.send('5'))]
+        self.meteors = [Meteor(
+            (int(x[0]), int(x[1])),
+            int(x[2])) for x in self.parse_meteors(self.net.send('5'))]
 
         while run:
             clock.tick(self.FPS)
@@ -190,6 +193,11 @@ class Game:
                 self.player.reset_pos()
                 self.player2.reset_pos()
                 self.available_bullets = 3
+                self.meteors = [Meteor(
+                                    (int(x[0]), int(x[1])),
+                                    int(x[2])) for x in self.parse_meteors(
+                                        self.net.send('5'))]
+
                 self.canvas.draw_text(
                     "Game Over", 48, self.width/2, self.height/2)
                 self.canvas.draw_text(
@@ -223,7 +231,7 @@ class Game:
         move_dir = [0, 0]
         if keys[pygame.K_d]:
             if self.player.player_pos.x <= self.width \
-                    - self.player.velocity:
+                    - self.player.velocity - 50:
                 move_dir[0] = 1
 
         if keys[pygame.K_a]:
@@ -235,7 +243,7 @@ class Game:
                 move_dir[1] = -1
         if keys[pygame.K_s]:
             if self.player.player_pos.y <= \
-                    self.height - self.player.velocity:
+                    self.height - self.player.velocity - 50:
                 move_dir[1] = 1
 
         if move_dir != [0, 0]:
@@ -244,7 +252,7 @@ class Game:
                 self.dash = 20
                 self.dash_cd[1] = float(self.current_time)
                 self.dash_cd[2] = True
-            self.player.move(tuple(move_dir), self.dash)
+            self.player.move(tuple(move_dir), self.meteors, self.dash)
             move_dir = [0, 0]
 
         # Collisions
@@ -284,8 +292,8 @@ class Game:
         # Update Canvas
         self.player.draw(self.canvas.get_canvas())
         self.player2.draw(self.canvas.get_canvas())
-        # for meteor in self.meteors:
-        # meteor.draw(self.canvas.get_canvas())
+        for meteor in self.meteors:
+            meteor.draw(self.canvas.get_canvas())
         self.canvas.draw_text(f"{self.score[0]} : {self.score[1]}",
                               36,  int(self.width/2), 20)
         self.canvas.get_canvas().blit(
@@ -313,6 +321,25 @@ class Game:
                     or bullet.pos.y > self.height:
                 bullet.bounce()
                 bullet.velocity.y *= -1
+            if m_list := bullet.rect.collidelistall(self.meteors):
+                collide_tolerance = 8
+                meteor = m_list[0]
+                if abs(self.meteors[meteor].rect.top - bullet.rect.top
+                       ) < collide_tolerance:
+                    bullet.bounce()
+                    bullet.velocity.y *= -1
+                if abs(self.meteors[meteor].rect.bottom - bullet.rect.bottom
+                       ) < collide_tolerance:
+                    bullet.bounce()
+                    bullet.velocity.y *= -1
+                if abs(self.meteors[meteor].rect.left - bullet.rect.left
+                       ) < collide_tolerance:
+                    bullet.bounce()
+                    bullet.velocity.x *= -1
+                if abs(self.meteors[meteor].rect.right - bullet.rect.right
+                       ) < collide_tolerance:
+                    bullet.bounce()
+                    bullet.velocity.x *= -1
 
             if bullet.bounces <= 0:
                 self.bullets.remove(bullet)

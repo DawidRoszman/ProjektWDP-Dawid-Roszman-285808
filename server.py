@@ -2,6 +2,7 @@ import socket
 from _thread import start_new_thread
 import sys
 import time
+import random
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -21,17 +22,27 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for a connection", server_ip)
 
+
+def generate_meteors():
+    for i in range(15):
+        x, y, r = [random.randint(100, 800),
+                   random.randint(100, 700), random.randint(40, 60)]
+        while any([abs(x-m[0]) < 100 and abs(y-m[1]) < 100 for m in meteors]):
+            x, y, r = [random.randint(100, 800), random.randint(100, 700),
+                       random.randint(40, 60)]
+        meteors.append([x, y, r])
+
+
 currentId = "0"
 beginning_pos = ["0:50,400,0", "1:900,400,0"]
 pos = beginning_pos[:]
 bullets = ["", ""]
 score = [0, 0]
 game_state = "waiting_for_players"
-meteors = [
-    [100, 100, 20],
-    [200, 200, 20],
-]
+meteors = []
+generate_meteors()
 ready = [0, 0]
+
 
 
 def threaded_client(conn):
@@ -42,7 +53,7 @@ def threaded_client(conn):
     Args:
         conn (socket): socket object of client connection
     """
-    global currentId, pos, bullets, score, game_state, ready
+    global currentId, pos, bullets, score, game_state, ready, meteors
     if currentId == "0":
         conn.send(str.encode(currentId+";"+";".join(pos)))
     else:
@@ -90,9 +101,9 @@ def threaded_client(conn):
                 elif id == 4:
                     print("Score:", score[0], score[1])
                     reply = str(score[0])+":"+str(score[1])
-                # elif id == 5:
-                    # reply = ":".join([str(m[0])+","+str(
-                    #    m[1])+","+str(m[2]) for m in meteors])
+                elif id == 5:
+                    reply = ":".join([str(m[0])+","+str(
+                       m[1])+","+str(m[2]) for m in meteors])
                 elif id == 6:
                     ready[int(arr[1])] = int(arr[2])
                     if ready[0] == 1 and ready[1] == 1:
@@ -102,6 +113,8 @@ def threaded_client(conn):
                         bullets = ["", ""]
                         print("Beginning pos:", beginning_pos)
                         pos = beginning_pos[:]
+                        meteors = []
+                        generate_meteors()
                     reply = str(ready[0])+":"+str(ready[1])
 
                 print("Sending: " + reply)
