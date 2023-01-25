@@ -205,10 +205,10 @@ class Game:
                     "Game Over", 48, self.width/2, self.height/2)
                 self.canvas.draw_text(
                     "Ready" if self.ready[0] else "Not Ready",
-                    36, self.width/2-80, self.height/2+50)
+                    36, self.width/2-150, self.height/2+50)
                 self.canvas.draw_text(
                     "Ready" if self.ready[1] else "Not Ready",
-                    36, self.width/2+80, self.height/2+50)
+                    36, self.width/2+150, self.height/2+50)
                 self.ready = self.parse_ready(self.send_ready())
 
             self.canvas.update()
