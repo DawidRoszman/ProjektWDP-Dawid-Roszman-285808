@@ -28,7 +28,7 @@ It is recommended to use virtualenv and install packages using pip install -r re
 
 To ensure optimal gameplay, both players and the server should be connected to the same network. If the game is not being played locally on one computer, when starting the server, enter your IPv4 address. Then, when running run.py, enter the same address as the server.
 
-When starting server.py you will be prompted to enter skins for players. You can find skin names in the section [below](#game-description)
+When starting server.py you will be prompted to enter skins for players. You can find skin names in the section [below](#skin-names)
 
 # Game Description 🎮
 
