@@ -26,6 +26,8 @@ One computer on local network must run server.py 🖥️ and the others need to 
 
 It is recommended to use virtualenv and install packages using pip install -r requirements.txt.
 
+To ensure optimal gameplay, both players and the server should be connected to the same network. If the game is not being played locally on one computer, when starting the server, enter your IPv4 address. Then, when running run.py, enter the same address as the server.
+
 ## Game Description 🎮
 
 In this game, players can earn points by shooting the second player. The player with the highest score at the end of the round is declared the winner. If a player is killed, a new round begins on a randomly selected map. The game continues until one player reaches 5 points, at which point they are declared the winner 🥇.
