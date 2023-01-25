@@ -12,6 +12,8 @@ class Network:
         self.id = self.msg[0]
         self.posPlayer = self.msg[1].split(":")[1].split(",")
         self.posEnemy = self.msg[2].split(":")[1].split(",")
+        self.playerSprite = self.msg[3]
+        self.enemySprite = self.msg[4]
         print(self.posPlayer, self.posEnemy)
 
     def connect(self):

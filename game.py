@@ -105,18 +105,18 @@ class Player():
 class Game:
 
     def __init__(self, w, h, host):
-        if host:
+        if host != "":
             self.net = Network(host)
         else:
-            self.net == Network()
+            self.net = Network()
         self.width = w
         self.height = h
         self.FPS = 60
         self.canvas = Canvas(self.width, self.height, "Duel")
         self.player1_img = pygame.transform.scale(pygame.image.load(
-            "./assets/PNG/playerShip1_blue.png").convert_alpha(), (50, 50))
+            f"./assets/PNG/{self.net.playerSprite}.png").convert_alpha(), (50, 50))
         self.player2_img = pygame.transform.scale(pygame.image.load(
-            "./assets/PNG/playerShip1_green.png").convert_alpha(), (50, 50))
+            f"./assets/PNG/{self.net.enemySprite}.png").convert_alpha(), (50, 50))
         self.player = Player(int(self.net.posPlayer[0]), int(
             self.net.posPlayer[1]), self.player1_img)
         self.player2 = Player(int(self.net.posEnemy[0]), int(

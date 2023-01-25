@@ -10,7 +10,7 @@ try:
     server = sys.argv[1]
 except Exception as ex:
     print(ex, "Using default server")
-    server = '10.10.4.64'
+    server = '127.0.0.1'
 server_ip = server
 port = 6677
 try:
@@ -22,6 +22,11 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for a connection", server_ip)
 
+def choose_skins():
+    skin1 = input("Choose skin for player 1: ")
+    skin2 = input("Choose skin for player 2: ")
+
+    return [skin1,skin2]
 
 def generate_meteors():
     for i in range(15):
@@ -42,7 +47,7 @@ game_state = "waiting_for_players"
 meteors = []
 generate_meteors()
 ready = [0, 0]
-
+skins = choose_skins()
 
 
 def threaded_client(conn):
@@ -55,9 +60,9 @@ def threaded_client(conn):
     """
     global currentId, pos, bullets, score, game_state, ready, meteors
     if currentId == "0":
-        conn.send(str.encode(currentId+";"+";".join(pos)))
+        conn.send(str.encode(currentId+";"+";".join(pos)+";"+";".join(skins)))
     else:
-        conn.send(str.encode(currentId+";"+";".join(pos[::-1])))
+        conn.send(str.encode(currentId+";"+";".join(pos[::-1])+";"+";".join(skins[::-1])))
     currentId = "1" if currentId == "0" else "0"
     reply = ''
     while True:
