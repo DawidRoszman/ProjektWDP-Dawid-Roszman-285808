@@ -3,9 +3,9 @@ import socket
 
 class Network:
 
-    def __init__(self):
+    def __init__(self, host="127.0.0.1"):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.host = "127.0.0.1"
+        self.host = host
         self.port = 6677
         self.addr = (self.host, self.port)
         self.msg = self.connect().split(";")

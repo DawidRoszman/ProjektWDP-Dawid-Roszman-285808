@@ -104,8 +104,11 @@ class Player():
 
 class Game:
 
-    def __init__(self, w, h):
-        self.net = Network()
+    def __init__(self, w, h, host):
+        if host:
+            self.net = Network(host)
+        else:
+            self.net == Network()
         self.width = w
         self.height = h
         self.FPS = 60
